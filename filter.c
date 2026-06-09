@@ -119,20 +119,23 @@ int convolve_and_compute_power(int length, double input_signal[],
 
   double pow_sum = 0;
 
-  for (int i = 0; i < length; i++) {
+  // i < order, not all coeffs have valid input
+  for (int i = 0; i < order && i < length; i++) {
     double cur_sum = 0;
-    for (int j = order; j >= 0; j--) {
-      // Use coeff only if there is input signal
-      // that matches, otherwise assume input signal
-      // is zero (aperiodic model)
-      if ((i - j) >= 0 && (i - j) < length) {
-        // Causal model, use inputs up to this point
-        cur_sum += input_signal[i - j] * coeffs[j];
-      }
+    for (int j = 0; j <= i; j++) {
+      cur_sum += input_signal[i - j] * coeffs[j];
     }
     pow_sum += cur_sum * cur_sum;
   }
 
+  // all coeffs have valid input, no branch needed
+  for (int i = order; i < length; i++) {
+    double cur_sum = 0;
+    for (int j = 0; j <= order; j++) {
+      cur_sum += input_signal[i - j] * coeffs[j];
+    }
+    pow_sum += cur_sum * cur_sum;
+  }
   *power = pow_sum / length;
 
   return 0;
