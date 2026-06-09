@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -87,6 +89,8 @@ void* worker(void* arg) {
   for (int band = a->band_start; band < a->band_end; band++) {
     // making the filter
     generate_band_pass(a->sig->Fs, band * a->bandwidth + 0.0001, (band + 1) * a->bandwidth - 0.0001, a->filter_order, filter_coeffs);
+    generate_band_pass(a->sig->Fs, band * a->bandwidth + 0.0001, (band + 1) * a->bandwidth - 0.0001, a->filter_order, filter_coeffs);
+    hamming_window(a->filter_order, filter_coeffs);
     // convolve
     convolve_and_compute_power(a->sig->num_samples, a->sig->data, a->filter_order, filter_coeffs, &(a->band_power[band]));
   }

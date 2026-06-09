@@ -1,0 +1,32 @@
+type:     Binary
+file:     sig-0.bin
+Fs:       400000.000000 Hz
+order:    32
+bands:    10
+Load or map file
+Read 12000000 samples
+Removing DC component of 0.000899
+signal average power:     0.520737
+    0             0.000100 to         19999.999900 Hz:             0.002955 *(meh)
+    1         20000.000100 to         39999.999900 Hz:             0.004842 **(meh)
+    2         40000.000100 to         59999.999900 Hz:             0.003571 **(meh)
+    3         60000.000100 to         79999.999900 Hz:             0.000005 *(meh)
+    4         80000.000100 to         99999.999900 Hz:             0.000015 *(meh)
+    5        100000.000100 to        119999.999900 Hz:             0.122603 ****************************************(WOW)
+    6        120000.000100 to        139999.999900 Hz:             0.122973 ****************************************(WOW)
+    7        140000.000100 to        159999.999900 Hz:             0.000022 *(meh)
+    8        160000.000100 to        179999.999900 Hz:             0.000002 *(meh)
+    9        180000.000100 to        199999.999900 Hz:             0.000004 *(meh)
+Resource usages:
+User time        16.299523 seconds
+System time      0.271906 seconds
+Page faults      46954
+Page swaps       0
+Blocks of I/O    0
+Signals caught   0
+Context switches 1084
+timing overhead is at least 18 cycles
+Analysis took 24162236060 cycles (8.651471 seconds) by cycle count, timing overhead=18 cycles
+Note that cycle count only makes sense if the thread stayed on one core
+Analysis took 9.315088 seconds by basic timing
+POSSIBLE ALIENS 100000.000100-139999.999900 HZ (CENTER 120000.000000 HZ)
