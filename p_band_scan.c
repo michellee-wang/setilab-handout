@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "filter.h"
 #include "signal.h"
@@ -57,6 +58,32 @@ void remove_dc(double* data, int num) {
   }
 }
 
+// Function run by each thread
+void* worker(void* arg) {
+  long myid   = (long)arg;
+  long mytid  = tid[myid];  // notice access to shared variable
+  long mytime = 1 + rand() % 10;
+
+  printf("Hello from thread %ld (tid %ld)\n",myid,mytid);
+  printf("Thread %ld is putting itself onto procesor %ld\n", myid, myid % numproc);
+
+  // put ourselves on the desired processor
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(myid % numproc, &set);
+  if (sched_setaffinity(0,sizeof(set),&set) < 0) { // do it
+    perror("Can't setaffinity");  // hopefully doesn't fail
+    exit(-1);
+  }
+
+  printf("Thread %ld now sleeping for %ld seconds\n", myid, mytime);
+
+  sleep(mytime);
+
+  printf("Thread %ld done sleeping and now exiting\n", myid);
+
+  pthread_exit(NULL); // finish - no return value
+}
 
 int analyze_signal(signal* sig, int filter_order, int num_bands, double* lb, double* ub) {
 
