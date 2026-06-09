@@ -1,0 +1,6 @@
+declare -x KEEP_SLURM_WORK_DIR=false
+declare -x RENAMED_WORK_DIR_PATH=/home/aik9303/mysetilab/seti-run-$SLURM_JOB_ID-eval-2026-06-09T16:16:39-05:00
+declare -x SETI_GOLDEN_DIR=/home/cs213lab/seti-scripts-slurm
+declare -x SETI_HANDOUT_DIR=/home/cs213lab/HANDOUT
+declare -x PERL5LIB=/home/cs213lab/seti-scripts-slurm
+declare -x SETI_EVAL_TO_RUN='/home/cs213lab/seti-scripts-slurm/seti-eval -n "voj1571_aik9303" -t "michelleandlily" -k fbccb812e6cb8f7df1d75130fa0b84d3 -a 2'
