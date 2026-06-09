@@ -58,34 +58,43 @@ void remove_dc(double* data, int num) {
   }
 }
 
-// Function run by each thread
-void* worker(void* arg) {
-  long myid   = (long)arg;
-  long mytid  = tid[myid];  // notice access to shared variable
-  long mytime = 1 + rand() % 10;
+// struct
+typedef struct {
+  signal *sig;
+  int filter_order;
+  double bandwidth;
+  int band_start;
+  int band_end;
+  double *band_power;
+  int processor_id;
+} thread_args;
 
-  printf("Hello from thread %ld (tid %ld)\n",myid,mytid);
-  printf("Thread %ld is putting itself onto procesor %ld\n", myid, myid % numproc);
+// Function run by each thread (boiler plate from band_scan.c) 
+void* worker(void* arg) {
+  thread_args* a = (thread_args*)arg; 
 
   // put ourselves on the desired processor
   cpu_set_t set;
   CPU_ZERO(&set);
-  CPU_SET(myid % numproc, &set);
+  CPU_SET(a->processor_id, &set); // sched_setaffinity -> pthread_setaffinity_np
   if (sched_setaffinity(0,sizeof(set),&set) < 0) { // do it
     perror("Can't setaffinity");  // hopefully doesn't fail
     exit(-1);
   }
 
-  printf("Thread %ld now sleeping for %ld seconds\n", myid, mytime);
+  double filter_coeffs[a->filter_order + 1];
 
-  sleep(mytime);
-
-  printf("Thread %ld done sleeping and now exiting\n", myid);
+  for (int band = a->band_start; band < a->band_end; band++) {
+    // making the filter
+    generate_band_pass(a->sig->Fs, band * a->bandwidth + 0.0001, (band + 1) * a->bandwidth - 0.0001, a->filter_order, filter_coeffs);
+    // convolve
+    convolve_and_compute_power(a->sig->num_samples, a->sig->data, a->filter_order, filter_coeffs, &(a->band_power[band]));
+  }
 
   pthread_exit(NULL); // finish - no return value
 }
 
-int analyze_signal(signal* sig, int filter_order, int num_bands, double* lb, double* ub) {
+int analyze_signal(signal* sig, int filter_order, int num_bands, int num_threads, int num_processors, double* lb, double* ub) {
 
   double Fc        = (sig->Fs) / 2;
   double bandwidth = Fc / num_bands;
@@ -101,25 +110,28 @@ int analyze_signal(signal* sig, int filter_order, int num_bands, double* lb, dou
   double start = get_seconds();
   unsigned long long tstart = get_cycle_count();
 
-  double filter_coeffs[filter_order + 1];
   double band_power[num_bands];
-  for (int band = 0; band < num_bands; band++) {
-    // Make the filter
-    generate_band_pass(sig->Fs,
-                       band * bandwidth + 0.0001, // keep within limits
-                       (band + 1) * bandwidth - 0.0001,
-                       filter_order,
-                       filter_coeffs);
-    hamming_window(filter_order,filter_coeffs);
+  pthread_t threads[num_threads];
+  thread_args args[num_threads];
+  
+  int bands_per_thread = num_bands / num_threads;
+  int leftover = num_bands % num_threads;
+  int band_start = 0;
 
-    // Convolve
-    convolve_and_compute_power(sig->num_samples,
-                               sig->data,
-                               filter_order,
-                               filter_coeffs,
-                               &(band_power[band]));
-
+  for (int t = 0; t < num_threads; t++) {
+    int my_bands = bands_per_thread + (t < leftover ? 1 : 0);
+    args[t].sig          = sig;
+    args[t].filter_order = filter_order;
+    args[t].bandwidth    = bandwidth;
+    args[t].band_start   = band_start;
+    args[t].band_end     = band_start + my_bands;
+    args[t].band_power   = band_power;
+    args[t].processor_id = t % num_processors;
+    pthread_create(&threads[t], NULL, worker, &args[t]);
+    band_start += my_bands;
   }
+  // waiting for all threads to finish
+  for (int t = 0; t < num_threads; t++) pthread_join(threads[t], NULL);
 
   unsigned long long tend = get_cycle_count();
   double end = get_seconds();
@@ -195,7 +207,7 @@ Context switches %ld\n",
 
 int main(int argc, char* argv[]) {
 
-  if (argc != 6) {
+  if (argc != 8) {
     usage();
     return -1;
   }
@@ -205,10 +217,16 @@ int main(int argc, char* argv[]) {
   double Fs        = atof(argv[3]);
   int filter_order = atoi(argv[4]);
   int num_bands    = atoi(argv[5]);
+  // add the 2 new args
+  int num_threads    = atoi(argv[6]);
+  int num_processors = atoi(argv[7]);
 
   assert(Fs > 0.0);
   assert(filter_order > 0 && !(filter_order & 0x1));
   assert(num_bands > 0);
+  // addeded 2 new asserts
+  assert(num_threads > 0);
+  assert(num_processors > 0);
 
   printf("type:     %s\n\
 file:     %s\n\
@@ -251,7 +269,7 @@ bands:    %d\n",
 
   double start = 0;
   double end   = 0;
-  if (analyze_signal(sig, filter_order, num_bands, &start, &end)) {
+  if (analyze_signal(sig, filter_order, num_bands, num_threads, num_processors, &start, &end)) {
     printf("POSSIBLE ALIENS %lf-%lf HZ (CENTER %lf HZ)\n", start, end, (end + start) / 2.0);
   } else {
     printf("no aliens\n");
